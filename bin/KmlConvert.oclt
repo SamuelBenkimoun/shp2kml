@@ -1,0 +1,68 @@
+scenario KmlConvert {
+
+  println("Model KmlConvert ready to run")
+
+    // read clusters from Shapefile  
+    let clShp = new Clusters_shp
+    let cluster_Shp = clShp.readAll()
+    for (cl:cluster_Shp) cl.initDate  // conversino des dates
+
+    // Initialize kml file for output
+    let kmln = new KML_export
+    let plt = colorRange(1,"dem")        // get list of colors from predefined palette "dem"
+    kmln.defStyleRange("st",2.0,plt,-0.2) // prefix, line thickness, list of colors , darken line color a little
+
+    // End Init
+
+    // Write land cover state in kml file
+    for (p:cluster_Shp) {
+		  p.initDate()    	
+          p.outputKml(p.ddebut, kmln) // write to Kml for each cluster of the list
+    }               
+
+    // Saving kml file 
+    println("")
+    println("Saving kml file...")
+    kmln.saveAsKml()
+    println("Done.")    
+
+}
+
+entity Cluster {
+	property MultiPolygon geom
+	property String id
+	property Date ddebut
+	property Date dfin  
+	property String sdate
+	property String edate
+	property Integer cas
+
+    // Permet de convertir la date de type String lue par le datafacer en vrai date
+    service initDate() {
+      ddebut = Date|fromString("yyyy/MM/dd",sdate)
+      dfin = Date|fromString("yyyy/MM/dd",edate)
+    }    
+
+	service outputKml (Date ddate, KML_export kml){
+     let id = "Cluster" + id + "_" + ddate
+     let style="st"  //+ lct  
+     let deb = ddate
+     let fin = dfin
+     kml.addGeometry (style,id, deb, fin, geom, style,0)    
+     }
+}
+
+datafacer Clusters_shp {
+	data Shapefile("data/Clusters_1km_1+.shp","EPSG:4326")
+	match Cluster {
+		id : "LOC_ID"
+		geom : "geom"
+		sdate : "START_DATE"  // j'ai transormé date en sdate parce que ce datafacer Shapefile ne sait pas encore lire les dates directement
+		edate : "END_DATE"
+		cas : "NUMBER_LOC"
+	}
+}
+
+datafacer KML_export {
+	data KmlExport("output/clusters.kml")
+}
